@@ -162,7 +162,7 @@ def DeltaToPerturb(dterm):
     
     return pterm
     
-n = 6
+n = 11
 possible_terms = [ls for ls in partition(n+1,n-1) if not first_last_cancel(ls)] # only consider terms where the first/last indicies don't cancel
 combined_terms = [combine_first_last(ls) for ls in possible_terms] # combine the first and last indicies of each term
 resolved_terms = [resolve_signs(ls) for ls in combined_terms] # resolve negative signs
@@ -178,6 +178,8 @@ for term in resolved_terms[1:]:
             break
     if need_to_append:
         consolidated_terms.append(term)
+
+consolidated_terms = [t for t in consolidated_terms if t.coeff != 0]
 
 pterms = [DeltaToPerturb(term) for term in consolidated_terms]
 
@@ -195,5 +197,5 @@ for term in pterms[1:]:
 
 
 consolidated_pterms = [t for t in consolidated_pterms if t.coeff != 0]
-#print(consolidated_pterms)
-print([t for t in consolidated_pterms if t.v_exp == 1])
+print(len(consolidated_pterms))
+#print([t for t in consolidated_pterms if t.v_exp == 1])
