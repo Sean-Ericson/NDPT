@@ -51,6 +51,19 @@ def partition(n,m):
             res += [[i] + ls]
     return res
 
+# Return all first/last-term-canceling partitions for correction n
+def smart_partition(n):
+    res = []
+    # zero on each side
+    for ls in partition(n-1, n-1):
+        res.append([0] + ls + [0])
+    # nonzero on each side
+    for i in range(1, n):
+        for j in range(1, n-i):
+            for ls in partition(n-1, n-1-i-j):
+                res.append([i] + ls + [j])
+    return res
+
 def combine_first_last(ls):
     if first_last_cancel(ls):
         raise InvalidOperation()
@@ -88,22 +101,60 @@ def lists_equal(l1, l2):
             return False
     return True
 
+class MultiSet:
+    def __init__(self) -> None:
+        self.items = []
+
+    def add(self, new_item, count):
+        need_to_append = True
+        for i in range(len(self.items)):
+            current_item, current_count = self.items[i]
+            if current_item == new_item:
+                self.items[i] = (current_item, current_count + count)
+                need_to_append = False
+                break
+        if need_to_append:
+            self.items.append(tuple((new_item, count)))
+        self.clear_zero_count_items()
+
+    def clear_zero_count_items(self):
+        self.items = [i for i in self.items if i[1] != 0]
+
+    def __eq__(self, other):
+        if len(self.items) != len(other.items):
+            return False
+        for item in self.items:
+            val, count = item
+            match_found = False
+            for i in other.items:
+                if i[0] == val and i[1] == count:
+                    match_found = True
+                    break
+            if not match_found:
+                return False
+        return True
+
+    def __str__(self):
+        return " ".join(["{}^{:d}".format(i[0], i[1]) if i[1] != 1 else "{}".format(i[0]) for i in self.items])
+
+    def __repr__(self):
+        return str(self)
+
 class SigmaTerm:
-    def __init__(self, n, exps):
-        self.n = n
+    def __init__(self,exps):
         self.exps = exps
 
     def __eq__(self, other: object) -> bool:
-        return self.n == other.n and lists_equal(self.exps, other.exps)
+        return lists_equal(self.exps, other.exps)
     
     def __str__(self):
-        return "Sigma({:d}; {})".format(self.n, self.exps)
+        return "Sigma({})".format(self.exps)
 
     def __repr__(self) -> str:
         return str(self)
 
     def ToLatex(self):
-        return "\\Sigma_{{}}^{:d}".format(self.exps, self.n)
+        return "\\Sigma_{{}}".format(self.exps)
 
 class PerturbativeTerm:
     def __init__(self, v_exp, sigmas, coeff) -> None:
@@ -111,25 +162,22 @@ class PerturbativeTerm:
         self.sigmas = sigmas
         self.coeff = coeff
 
+    def __eq__(self, other):
+        return self.v_exp == other.v_exp and self.coeff == other.coeff and self.sigmas == other.sigmas
+
     def __str__(self) -> str:
-        return "{:d} * (V_00 ** {:d}) ".format(self.coeff, self.v_exp) + " ".join([str(s) for s in self.sigmas]) if self.v_exp > 0 else "{:d} * ".format(self.coeff) + " ".join([str(s) for s in self.sigmas])
+        return "{:d} * (V_00 ^ {:d}) ".format(self.coeff, self.v_exp) + str(self.sigmas) if self.v_exp > 0 else "{:d} * ".format(self.coeff) + str(self.sigmas)
     
     def __repr__(self) -> str:
         return str(self)
 
-class V0Term:
-    def __init__(self, power, pterms) -> None:
-        self.power = power
-        self.pterms = pterms
-
-    def __str__(self):
-        overall_negative = len([x for x in self.pterms if x.coeff < 0]) >= math.ceil(len(self.pterms)/2)
-
-    
 def DeltaToPerturb(dterm):
     if dterm.ls[0] != 0:
-        raise Exception("I thought (well, conjectured) I was always gonna have 0s at the start...")
-    pterm = PerturbativeTerm(0, [], dterm.coeff)
+        #rotate to start at a 0
+        i = dterm.ls.index(0)
+        dterm.ls = dterm.ls[i:] + dterm.ls[:i]
+    
+    pterm = PerturbativeTerm(0, MultiSet(), dterm.coeff)
     
     # get info for v_exp
     zero_run_lens = [1]
@@ -158,16 +206,22 @@ def DeltaToPerturb(dterm):
         else:
             in_group = False
     for group in number_groups:
-        pterm.sigmas.append(SigmaTerm(len(group)-1, group))
+        pterm.sigmas.add(SigmaTerm(group), 1)
     
     return pterm
-    
-n = 11
-possible_terms = [ls for ls in partition(n+1,n-1) if not first_last_cancel(ls)] # only consider terms where the first/last indicies don't cancel
-combined_terms = [combine_first_last(ls) for ls in possible_terms] # combine the first and last indicies of each term
-resolved_terms = [resolve_signs(ls) for ls in combined_terms] # resolve negative signs
 
-# Consolidate the terms together
+def print_pterms_by_v00(pterms):
+    v_max = max(pterms, key=lambda t: t.v_exp).v_exp
+    for i in range(v_max + 1):
+        for t in [t for t in pterms if t.v_exp == i]:
+            print(t)
+    
+n = 6
+possible_terms = smart_partition(n)
+combined_terms = [combine_first_last(ls) for ls in possible_terms] # combine the first and last indicies of each term, creating list of DeltaTerm objects
+resolved_terms = [resolve_signs(ls) for ls in combined_terms] # resolve the signs of the DeltaTerm objects (odd # of 0s add a - sign)
+
+# Consolidate the terms together (add like terms)
 consolidated_terms = [resolved_terms[0]]
 for term in resolved_terms[1:]:
     need_to_append = True
@@ -179,23 +233,20 @@ for term in resolved_terms[1:]:
     if need_to_append:
         consolidated_terms.append(term)
 
-consolidated_terms = [t for t in consolidated_terms if t.coeff != 0]
+consolidated_terms = [t for t in consolidated_terms if t.coeff != 0] # remove terms w/ coeff 0
+pterms = [DeltaToPerturb(term) for term in consolidated_terms] # convert from DeltaTerms to PerturbativeTerms
 
-pterms = [DeltaToPerturb(term) for term in consolidated_terms]
-
-# Consolidate pterms together
+# Consolidate pterms together (add like terms)
 consolidated_pterms = [pterms[0]]
 for term in pterms[1:]:
     need_to_append = True
     for inserted_term in consolidated_pterms:
-        if set_lists_equal(term.sigmas, inserted_term.sigmas):
+        if term.sigmas == inserted_term.sigmas:
             inserted_term.coeff += term.coeff
             need_to_append = False
             break
     if need_to_append:
         consolidated_pterms.append(term)
 
-
-consolidated_pterms = [t for t in consolidated_pterms if t.coeff != 0]
-print(len(consolidated_pterms))
-#print([t for t in consolidated_pterms if t.v_exp == 1])
+consolidated_pterms = [t for t in consolidated_pterms if t.coeff != 0] # remove terms w/ coeff 0
+print_pterms_by_v00(consolidated_pterms)
