@@ -249,4 +249,5 @@ for term in pterms[1:]:
         consolidated_pterms.append(term)
 
 consolidated_pterms = [t for t in consolidated_pterms if t.coeff != 0] # remove terms w/ coeff 0
-print_pterms_by_v00(consolidated_pterms)
+#print_pterms_by_v00(consolidated_pterms)
+print(len(consolidated_pterms))
