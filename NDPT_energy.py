@@ -2,42 +2,36 @@ from decimal import InvalidOperation
 import numpy as np
 import math
 
+# rotate list ls to the right by n (negative to go left)
+def rotate_list(ls, n):
+    return ls[-n:] + ls[:-n]
+
+# Determine if two lists are rotated versions of each other
 def cyclic_list_equal(l1, l2):
+    # Normal list equal
+    def list_equal(l1, l2):
+        for i in range(len(l1)):
+            if l1[i] != l2[i]:
+                return False
+        return True
+
     if len(l1) != len(l2):
         return False
-    n = len(l1)
-    ks = [i for i in range(n) if l1[0] == l2[i]]
-    if len(ks) == 0:
-        return False
-    for k in ks:
-        equal = True
-        for i in range(n):
-            if l1[i] != l2[(k + i) % n]:
-                equal = False
-                break
-        if equal:
-            return True 
+
+    for i in range(len(l1)):
+        if list_equal(l1, rotate_list(l2, i)):
+            return True
     return False
 
 def set_lists_equal(l1, l2):
-    def isSubset(l1, l2):
-        for x in l1:
-            if not (x in l2):
-                return False
-        return True
-    return isSubset(l1, l2) and isSubset(l2, l1)
+    s1 = set(l1)
+    s2 = set(l2)
+    return s1.issubset(s2) and s2.issubset(s1)
 
 def insert(i, x, ls):
     l = list(ls)
     l.insert(i,x)
     return l
-
-# return a list of lists, each of wich is ls w/ x inserted into a different place
-def insert_into_every_pos(x, ls):
-    return [insert(i,x, ls) for i in range(len(ls)+1)]
-
-def first_last_cancel(ls):
-    return (ls[0] == 0 and ls[-1] != 0) or (ls[-1] == 0 and ls[0] != 0)
 
 # returns all *lists* n non-negative numbers that sum to m
 def partition(n,m):
@@ -65,7 +59,7 @@ def smart_partition(n):
     return res
 
 def combine_first_last(ls):
-    if first_last_cancel(ls):
+    if (ls[0] == 0 and ls[-1] != 0) or (ls[-1] == 0 and ls[0] != 0):
         raise InvalidOperation()
     if ls[0] == 0:
         return DeltaTerm(-1, ls[:-1])
@@ -93,13 +87,7 @@ class DeltaTerm:
 def resolve_signs(dterm):
     return DeltaTerm(dterm.coeff * ((-1)**sum([1 for i in range(len(dterm.ls)) if dterm.ls[i] == 0])), dterm.ls)
 
-def lists_equal(l1, l2):
-    if len(l1) != len(l2):
-        return False
-    for i in range(len(l1)):
-        if l1[i] != l2[i]:
-            return False
-    return True
+
 
 class MultiSet:
     def __init__(self) -> None:
@@ -145,7 +133,7 @@ class SigmaTerm:
         self.exps = exps
 
     def __eq__(self, other: object) -> bool:
-        return lists_equal(self.exps, other.exps)
+        return len(self.exps) == len(other.exps) and np.all(np.array(self.exps) == np.array(other.exps))
     
     def __str__(self):
         return "Sigma({})".format(self.exps)
@@ -216,7 +204,7 @@ def print_pterms_by_v00(pterms):
         for t in [t for t in pterms if t.v_exp == i]:
             print(t)
     
-n = 6
+n = 4
 possible_terms = smart_partition(n)
 combined_terms = [combine_first_last(ls) for ls in possible_terms] # combine the first and last indicies of each term, creating list of DeltaTerm objects
 resolved_terms = [resolve_signs(ls) for ls in combined_terms] # resolve the signs of the DeltaTerm objects (odd # of 0s add a - sign)
@@ -249,5 +237,4 @@ for term in pterms[1:]:
         consolidated_pterms.append(term)
 
 consolidated_pterms = [t for t in consolidated_pterms if t.coeff != 0] # remove terms w/ coeff 0
-#print_pterms_by_v00(consolidated_pterms)
-print(len(consolidated_pterms))
+print_pterms_by_v00(consolidated_pterms)
