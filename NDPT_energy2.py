@@ -1,6 +1,7 @@
 from decimal import InvalidOperation
 import numpy as np
 import math
+import pickle
 
 # rotate list ls to the right by n (negative to go left)
 def rotate_list(ls, n):
@@ -23,6 +24,7 @@ def list_cyclic_equal(l1, l2):
             return True
     return False
 
+# Determine if two lists are equal as sets. (can't use set() if the elements aren't hashable)
 def list_set_equal(l1, l2):
     return np.all(np.array([x in l2 for x in l1])) and np.all(np.array(x in l1 for x in l2))
 
@@ -86,20 +88,20 @@ class MultiSet:
         return str(self)
 
 class SigmaTerm:
-    def __init__(self, exps):
-        self.exps = exps
+    def __init__(self, indices):
+        self.indices = indices
 
     def __eq__(self, other: object) -> bool:
-        return len(self.exps) == len(other.exps) and np.all(np.array(self.exps) == np.array(other.exps))
+        return len(self.indices) == len(other.indices) and np.all(np.array(self.indices) == np.array(other.indices))
     
     def __str__(self):
-        return "Sigma({})".format(self.exps)
+        return "Sigma({})".format(self.indices)
 
     def __repr__(self) -> str:
         return str(self)
 
     def ToLatex(self):
-        return "\\Sigma_{{}}".format(self.exps)
+        return "\\Sigma_{{}}".format(self.indices)
 
 class PerturbativeTerm:
     def __init__(self, v_exp, sigmas) -> None:
@@ -111,15 +113,17 @@ class PerturbativeTerm:
         # Combine first/last
         partition = [partition[0] + partition[-1]] + partition[1:-1]
 
-        if partition[0] == 0:
-            #rotate to start at a not 0
-            partition = rotate_list(partition, -partition.index([x for x in partition if x != 0][0]))
+        #rotate to start at a boundary 0
+        for i in range(len(partition)):
+            if partition[i] != 0 and partition[(i+1)%len(partition)] == 0:
+                shift = i+1    
+        partition = rotate_list(partition, -shift)
         
         pterm = PerturbativeTerm(0, MultiSet())
         
         # get info for v_exp
-        zero_run_lens = []
-        on_run = False
+        zero_run_lens = [1]
+        on_run = True
         for i in range(1, len(partition)):
             if partition[i] == 0:
                 if on_run:
@@ -132,8 +136,8 @@ class PerturbativeTerm:
         pterm.v_exp = sum(zero_run_lens) - len(zero_run_lens)
 
         # get sigmas
-        number_groups = [[partition[0]]]
-        in_group = True
+        number_groups = []
+        in_group = False
         for i in range(1, len(partition)):
             if partition[i] != 0:
                 if in_group:
@@ -167,9 +171,12 @@ class EnergyCorrection:
     def calc(self):
         # Generate perms and combine first/last 
         p_terms = MultiSet()
-        for part in smart_partition(self.n):
-            p_terms.add(PerturbativeTerm.FromPartition(part), (-1)**(part.count(0)))
-            foo = "bar"
+        foo = smart_partition(self.n)
+        bar = "eyyyylmao"
+        print(len(foo))
+        for part in foo:
+            p_terms.add(PerturbativeTerm.FromPartition(part), (-1)**(part.count(0)), auto_clear=False)
+        p_terms.clear_zero_count_items()
 
         #Sort by V00
         self.v_max = max(list(zip(*p_terms.items))[0], key=lambda t: t.v_exp).v_exp
@@ -182,8 +189,14 @@ class EnergyCorrection:
         for i in range(self.v_max + 1):
             for t in [t for t in self.p_terms.items if t[0].v_exp == i]:
                 print(t[0].string_with_coeff(t[1]))
+        
+    def to_list(self):
+        return [(v_exp, [([(sigma.indices, exp) for sigma,exp in sigmas.sigmas.items], coeff) for sigmas,coeff in pterm]) for v_exp, pterm in self.SigmasByV00.items()]
     
-n = 
-correction = EnergyCorrection(n)
-correction.calc()
-correction.print_pterms_by_v00()
+for i in range(2,13):
+    correction = EnergyCorrection(i)
+    correction.calc()
+    data = correction.to_list()
+    print("Terms in correction {}: {}".format(i, len(correction.p_terms.items)))
+    #with open("Coded_Corrections.pkl", 'wb') as file:
+    #    pickle.dump((i, data), file)
