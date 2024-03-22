@@ -242,8 +242,14 @@ class EnergyCorrection:
             coeff_str = str(int(gcd)) if gcd != 1 else ""
             coeff_str = ("-" if neg else "+") + coeff_str
             sigma_terms = ""
+            i = 0
             for term, coeff in terms:
                 sigma_terms += term.to_latex(coeff/gcd if not neg else -coeff/gcd, with_V00=False)
+                i += 1
+                #if i % 20 == 0:
+                #    sigma_terms += r" \\ " + "\n\t\t\t"
+            #if i % 20 == 0:
+            #    sigma_terms = sigma_terms[:-8]
             if sigma_terms[0] == "+":
                 sigma_terms = sigma_terms[1:]
             if v_exp > 0:

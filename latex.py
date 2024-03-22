@@ -5,7 +5,7 @@ with open("original_tex.tex", 'r') as tex_file:
     tex = TexSoup(tex_file)
 dgroup = tex.find("dgroup*")
 
-for i in range(4, 11):
+for i in range(4, 10):
     print(i)
     correction = EnergyCorrection(i)
     correction.calc()
@@ -16,5 +16,5 @@ for i in range(4, 11):
 
     dgroup.append(correction_tex)
 
-    with open("output/out{}.tex".format(i), "w") as f:
-        f.write(str(tex))
+with open("output/energies.tex", "w") as f:
+    f.write(str(tex))
