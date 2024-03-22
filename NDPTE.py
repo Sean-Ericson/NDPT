@@ -235,7 +235,7 @@ class EnergyCorrection:
         return (self.n, [(v_exp, [([(sigma.indices, exp) for sigma,exp in sigmas.sigmas.items()], coeff) for sigmas,coeff in pterm]) for v_exp, pterm in self.TermsByV00.items()])
     
     def to_latex(self):
-        res = "\\begin{dmath*}\n\\trdelta{" + str(self.n) + "} = "
+        res = "\t\\begin{dmath*}\n\t\t\\trdelta{" + str(self.n) + "} = "
         for v_exp, terms in sorted(self.TermsByV00.items(), key=lambda x:x[0]):
             gcd = np.gcd.reduce([t[1] for t in terms])
             neg = len([t for t in terms if t[1] < 0]) > len(terms) / 2
@@ -250,7 +250,7 @@ class EnergyCorrection:
                 v_str = r"V_{00}"
                 if v_exp > 1:
                     v_str += "^{" + (str(v_exp) if v_exp > 1 else "") + "}"
-                res += "\\quad " + coeff_str + v_str
+                res += "\t\t\\quad " + coeff_str + v_str
             else:
                 res += (coeff_str if not coeff_str in ["+", "-"] else "")
             if len(terms) > 1 and v_exp > 0:
@@ -258,7 +258,7 @@ class EnergyCorrection:
             else:
                 res += sigma_terms
             res += r" \\" + "\n"
-        res += "\end{dmath*}"
+        res += "\t\\end{dmath*}\n"
         return res
 
     @staticmethod

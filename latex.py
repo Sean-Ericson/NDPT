@@ -3,9 +3,9 @@ from TexSoup import TexSoup
 
 with open("original_tex.tex", 'r') as tex_file:
     tex = TexSoup(tex_file)
-dgroup = tex.document.children[-1]
+dgroup = tex.find("dgroup*")
 
-for i in range(4, 30):
+for i in range(4, 11):
     print(i)
     correction = EnergyCorrection(i)
     correction.calc()
