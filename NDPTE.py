@@ -30,34 +30,34 @@ def list_cyclic_equal(l1: list, l2: list) -> list:
 def list_set_equal(l1: list, l2: list) -> list:
     return np.all(np.array([x in l2 for x in l1])) and np.all(np.array(x in l1 for x in l2))
 
-class PartitionGenerator:
+class CompositionGenerator:
     # Store previously calculated partitions for reuse
-    partitions = dict()
+    compositions = dict()
     
     # Generate all lists of m non-negative integers that add to n
-    def partition(self, n: int, m: int) -> list:
-        if (n,m) in PartitionGenerator.partitions.keys():
-            return PartitionGenerator.partitions[(n,m)]
+    def restricted_composition(self, n: int, m: int) -> list:
+        if (n,m) in CompositionGenerator.compositions.keys():
+            return CompositionGenerator.compositions[(n,m)]
         res = []
         if m == 0:
             return [[0 for _ in range(n)]]
         if n == 1:
             return [[m]]
         for i in range(m+1):
-            for ls in self.partition(n-1, m-i):
+            for ls in self.restricted_composition(n-1, m-i):
                 res += [[i] + ls]
-        PartitionGenerator.partitions[(n,m)] = res
+        CompositionGenerator.compositions[(n,m)] = res
         return res
     
     # Generates partitions of
-    def noncanceling_partitions(self, n: int) -> Generator[list, None, None]:
+    def noncancelling_compositions(self, n: int) -> Generator[list, None, None]:
         # zero on each side
-        for ls in self.partition(n-1, n-1):
+        for ls in self.restricted_composition(n-1, n-1):
             yield [0] + ls + [0]
         # nonzero on each side
-        for i in range(1, n):
-            for j in range(1, n-i):
-                for ls in self.partition(n-1, n-1-i-j):
+        for i in range(1, n+1):
+            for j in range(1, n-i+1):
+                for ls in self.restricted_composition(n-1, n-1-i-j):
                     yield [i] + ls + [j]
 
 class MultiSet:
@@ -214,8 +214,8 @@ class EnergyCorrection:
     def calc(self):
         # Generate perms and combine first/last 
         p_terms = MultiSet() # Multiset of SigmaFactors
-        partGen = PartitionGenerator()
-        for part in partGen.noncanceling_partitions(self.n):
+        partGen = CompositionGenerator()
+        for part in partGen.noncancelling_compositions(self.n-1):
             p_terms.add(PerturbativeTerm.FromPartition(part), (-1)**(part.count(0)), auto_clear=False)
         p_terms.clear_zero_count_items()
         self.p_terms = p_terms
