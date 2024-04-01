@@ -1,10 +1,21 @@
 from NDPTE import EnergyCorrection
 import pickle
+import matplotlib.pyplot as plt
 
-with open("data/Coded_Corrections.pkl", 'rb') as file:
-    foo = pickle.load(file)
-    while True:
-        data = pickle.load(file)
-        print(data)
-        correction = EnergyCorrection.from_tuple(data)
-        correction.print_pterms_by_v00()
+with open("data/Corrections.pkl", 'rb') as file:
+    data = pickle.load(file)
+
+
+lens = {1: 1, 2: 1, 3: 2}
+for dat in data.items():
+    correction = EnergyCorrection.from_tuple(dat)
+    count = correction.term_count()
+    print("Terms in correction {:02d}: {:11,}".format(correction.n, count))
+    lens[correction.n] = count
+
+plt.plot(*zip(*list(lens.items())))
+plt.yscale("log")
+plt.title("Terms in nth Order NDPT Energy Correction")
+plt.xlabel("Order")
+plt.ylabel("Terms")
+plt.show()

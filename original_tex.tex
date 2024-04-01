@@ -5,13 +5,13 @@
 \usepackage{mathrsfs}
 \usepackage{enumitem}
 \usepackage{physics}
-\usepackage{breqn}
 \usepackage{pdflscape}
 
 \newcommand{\magsq}[1]{\big|#1\big|^2}
 \newcommand{\trdelta}[1]{\Tr[\Delta_{#1}]}
 
 \pagestyle{empty}
+\allowdisplaybreaks
 
 \begin{document}
 	
@@ -29,17 +29,11 @@
 
 \begin{landscape}
 \section*{Energy Corrections}
-\begin{dgroup*}
-    \begin{dmath*}
-        \trdelta{1} = V_{00} \\
-    \end{dmath*}
-    \begin{dmath*}
-        \trdelta{2} = \Sigma_1 \\
-    \end{dmath*}
-    \begin{dmath*}
-        \trdelta{3} = \Sigma_{1,1} \\
-         -V_{00}\Sigma_{2} \\
-    \end{dmath*}
-\end{dgroup*}
+\begin{align*}
+    \trdelta{1} &= V_{00} \\
+    \trdelta{2} &= \Sigma_1 \\
+    \trdelta{3} &= \Sigma_{1,1} \\
+        &\quad\; -V_{00}\Sigma_{2} \\
+\end{align*}
 \end{landscape}
 \end{document}

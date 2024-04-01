@@ -52,12 +52,12 @@ class CompositionGenerator:
     # Generates partitions of
     def noncancelling_compositions(self, n: int) -> Generator[list, None, None]:
         # zero on each side
-        for ls in self.restricted_composition(n-1, n-1):
+        for ls in self.restricted_composition(n, n):
             yield [0] + ls + [0]
         # nonzero on each side
         for i in range(1, n+1):
             for j in range(1, n-i+1):
-                for ls in self.restricted_composition(n-1, n-1-i-j):
+                for ls in self.restricted_composition(n, n-i-j):
                     yield [i] + ls + [j]
 
 class MultiSet:
@@ -118,14 +118,6 @@ class SigmaFactor:
 
     def __repr__(self) -> str:
         return str(self)
-    
-    def to_latex(self, exp=1) -> str:
-        if exp == 0:
-            return ""
-        elif exp == 1:
-            return r"\Sigma_{{{ind}}}".format(ind=",".join([str(x) for x in self.indices]))
-        else:
-            return r"\Sigma_{{{ind}}}^{{{exp}}}".format(ind=",".join([str(x) for x in self.indices]), exp=exp)
 
 class PerturbativeTerm:
     def __init__(self, v_exp: int, sigmas) -> None:
@@ -138,6 +130,7 @@ class PerturbativeTerm:
         partition = [partition[0] + partition[-1]] + partition[1:-1]
 
         #rotate to start at a boundary 0
+        shift = 0
         for i in range(len(partition)):
             if partition[i] != 0 and partition[(i+1)%len(partition)] == 0:
                 shift = i+1    
@@ -187,21 +180,6 @@ class PerturbativeTerm:
     def string_with_coeff(self, coeff) -> str:
         return "{:d} * (V_00 ^ {:d}) ".format(coeff, self.v_exp) + str(self.sigmas) if self.v_exp > 0 else "{:d} * ".format(coeff) + str(self.sigmas)
 
-    def to_latex(self, coeff, with_V00=True) -> str:
-        if coeff == 0:
-            return ""
-        if abs(coeff) > 1:
-            coeff_str = str(int(coeff))
-            if coeff > 0:
-                coeff_str = "+" + coeff_str
-        else:
-            coeff_str = "+" if coeff==1 else "-"
-        sigmas = "".join([sigma.to_latex(exp) for sigma, exp in self.sigmas.items()])
-        if with_V00 and self.v_exp != 0:
-            raise NotImplementedError
-        else:
-            return coeff_str + sigmas
-
     def __repr__(self) -> str:
         return str(self)
 
@@ -215,7 +193,7 @@ class EnergyCorrection:
         # Generate perms and combine first/last 
         p_terms = MultiSet() # Multiset of SigmaFactors
         partGen = CompositionGenerator()
-        for part in partGen.noncancelling_compositions(self.n-1):
+        for part in partGen.noncancelling_compositions(self.n - 1):
             p_terms.add(PerturbativeTerm.FromPartition(part), (-1)**(part.count(0)), auto_clear=False)
         p_terms.clear_zero_count_items()
         self.p_terms = p_terms
@@ -233,49 +211,21 @@ class EnergyCorrection:
         
     def to_tuple(self):
         return (self.n, [(v_exp, [([(sigma.indices, exp) for sigma,exp in sigmas.sigmas.items()], coeff) for sigmas,coeff in pterm]) for v_exp, pterm in self.TermsByV00.items()])
-    
-    def to_latex(self):
-        res = "\t\\begin{dmath*}\n\t\t\\trdelta{" + str(self.n) + "} = "
-        for v_exp, terms in sorted(self.TermsByV00.items(), key=lambda x:x[0]):
-            gcd = np.gcd.reduce([t[1] for t in terms])
-            neg = len([t for t in terms if t[1] < 0]) > len(terms) / 2
-            coeff_str = str(int(gcd)) if gcd != 1 else ""
-            coeff_str = ("-" if neg else "+") + coeff_str
-            sigma_terms = ""
-            i = 0
-            for term, coeff in terms:
-                sigma_terms += term.to_latex(coeff/gcd if not neg else -coeff/gcd, with_V00=False)
-                i += 1
-                #if i % 20 == 0:
-                #    sigma_terms += r" \\ " + "\n\t\t\t"
-            #if i % 20 == 0:
-            #    sigma_terms = sigma_terms[:-8]
-            if sigma_terms[0] == "+":
-                sigma_terms = sigma_terms[1:]
-            if v_exp > 0:
-                v_str = r"V_{00}"
-                if v_exp > 1:
-                    v_str += "^{" + (str(v_exp) if v_exp > 1 else "") + "}"
-                res += "\t\t\\quad " + coeff_str + v_str
-            else:
-                res += (coeff_str if not coeff_str in ["+", "-"] else "")
-            if len(terms) > 1 and v_exp > 0:
-                res += r"(" + sigma_terms + ")"
-            else:
-                res += sigma_terms
-            res += r" \\" + "\n"
-        res += "\t\\end{dmath*}\n"
-        return res
+
+    def term_count(self):
+        return len(self.p_terms.elements())
 
     @staticmethod
     def from_tuple(tup):
         n, termsByVexp = tup
         correction = EnergyCorrection(n)
         for v_exp, terms in termsByVexp:
+            correction.TermsByV00[v_exp] = []
             for term,coeff in terms:
                 sigmas = MultiSet(sort_key=lambda x: str(x.indices))
                 for ind,exp in term:
-                    sigmas.add(SigmaFactor(ind), exp)
-                correction.p_terms.add(PerturbativeTerm(v_exp, sigmas), coeff)
-        correction.sort_by_v00()
+                    sigmas.add(SigmaFactor(ind), exp, auto_clear=False)
+                pterm = PerturbativeTerm(v_exp, sigmas)
+                correction.p_terms.add(pterm, coeff, auto_clear=False)
+                correction.TermsByV00[v_exp].append((pterm, coeff))
         return correction
